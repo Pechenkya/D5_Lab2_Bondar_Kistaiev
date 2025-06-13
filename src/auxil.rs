@@ -1,5 +1,8 @@
 use std::io::{Read, Write};
-use rand::{RngCore, seq::SliceRandom};
+use rand::seq::SliceRandom;
+use std::fs::File;
+use std::io::{BufWriter, BufReader, BufRead};
+use std::error::Error;
 
 
 pub fn bytes_to_u16(pair: [u8; 2]) -> u16
@@ -91,29 +94,12 @@ pub fn random_bytes_to_file_with_shifted(path: &str, path_shifted_1: &str, shift
     write_bytes_to_file(path_shifted_4, &buffer_shift_4);
 }
 
-pub fn sample_random_bytes_from_file(path_to_plain: &str, path_to_cypher: &str,
-                                     path_to_shifted_1: &str, path_to_cypher_shifted_1: &str, 
-                                     path_to_shifted_2: &str, path_to_cypher_shifted_2: &str, 
-                                     path_to_shifted_3: &str, path_to_cypher_shifted_3: &str, 
-                                     path_to_shifted_4: &str, path_to_cypher_shifted_4: &str, 
-                                     count: usize) -> Vec<[[u16; 5]; 2]> {
+pub fn sample_random_bytes_from_file(path_to_plain: &str, path_to_cypher: &str, count: usize) -> Vec<(u16, u16)> {
     let plain_data = read_bytes_from_file(path_to_plain);
     let cypher_data = read_bytes_from_file(path_to_cypher);
 
-    let plain_s_data_1 = read_bytes_from_file(path_to_shifted_1);
-    let cypher_s_data_1 = read_bytes_from_file(path_to_cypher_shifted_1);
-
-    let plain_s_data_2 = read_bytes_from_file(path_to_shifted_2);
-    let cypher_s_data_2 = read_bytes_from_file(path_to_cypher_shifted_2);
-
-    let plain_s_data_3 = read_bytes_from_file(path_to_shifted_3);
-    let cypher_s_data_3 = read_bytes_from_file(path_to_cypher_shifted_3);
-
-    let plain_s_data_4 = read_bytes_from_file(path_to_shifted_4);
-    let cypher_s_data_4 = read_bytes_from_file(path_to_cypher_shifted_4);
-
     let mut rng = rand::rng();
-    let mut samples: Vec<[[u16; 5]; 2]> = Vec::new();
+    let mut samples: Vec<(u16, u16)> = Vec::new();
     let mut indices: Vec<usize> = (0..plain_data.len() / 2).collect();
     indices.shuffle(&mut rng);
     indices.truncate(count);
@@ -122,20 +108,40 @@ pub fn sample_random_bytes_from_file(path_to_plain: &str, path_to_cypher: &str,
         let plain = bytes_to_u16(plain_data[i * 2..i * 2 + 2].try_into().unwrap());
         let cypher = bytes_to_u16(cypher_data[i * 2..i * 2 + 2].try_into().unwrap());
 
-        let plain_s_1 = bytes_to_u16(plain_s_data_1[i * 2..i * 2 + 2].try_into().unwrap());
-        let cypher_s_1 = bytes_to_u16(cypher_s_data_1[i * 2..i * 2 + 2].try_into().unwrap());
-
-        let plain_s_2 = bytes_to_u16(plain_s_data_2[i * 2..i * 2 + 2].try_into().unwrap());
-        let cypher_s_2 = bytes_to_u16(cypher_s_data_2[i * 2..i * 2 + 2].try_into().unwrap());
-
-        let plain_s_3 = bytes_to_u16(plain_s_data_3[i * 2..i * 2 + 2].try_into().unwrap());
-        let cypher_s_3 = bytes_to_u16(cypher_s_data_3[i * 2..i * 2 + 2].try_into().unwrap());
-
-        let plain_s_4 = bytes_to_u16(plain_s_data_4[i * 2..i * 2 + 2].try_into().unwrap());
-        let cypher_s_4 = bytes_to_u16(cypher_s_data_4[i * 2..i * 2 + 2].try_into().unwrap());
-
-        samples.push([[plain, plain_s_1, plain_s_2, plain_s_3, plain_s_4], [cypher, cypher_s_1, cypher_s_2, cypher_s_3, cypher_s_4]]);
+        samples.push((plain, cypher));
     }
 
     samples
+}
+
+
+// Save a 2D Vec<f32> to a CSV file
+pub fn save_f32_2dvec_to_csv(data: &Vec<Vec<f32>>, path: &str) -> Result<(), Box<dyn Error>> {
+    let file = File::create(path)?;
+    let mut writer = BufWriter::new(file);
+
+    for row in data {
+        let line = row.iter()
+            .map(|v| v.to_string())
+            .collect::<Vec<_>>()
+            .join(",");
+        writeln!(writer, "{line}")?;
+    }
+    Ok(())
+}
+
+// Load a 2D Vec<f32> from a CSV file
+pub fn load_f32_2dvec_from_csv(path: &str) -> Result<Vec<Vec<f32>>, Box<dyn Error>> {
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+    let mut data = Vec::new();
+
+    for line in reader.lines() {
+        let line = line?;
+        let row = line.split(',')
+            .map(|s| s.trim().parse::<f32>())
+            .collect::<Result<Vec<_>, _>>()?;
+        data.push(row);
+    }
+    Ok(data)
 }
