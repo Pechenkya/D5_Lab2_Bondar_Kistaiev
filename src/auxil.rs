@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::{Read, Write};
 use rand::seq::SliceRandom;
 use std::fs::File;
@@ -144,4 +145,42 @@ pub fn load_f32_2dvec_from_csv(path: &str) -> Result<Vec<Vec<f32>>, Box<dyn Erro
         data.push(row);
     }
     Ok(data)
+}
+
+// Load a Vec<HashMap<f32>> from a CSV file
+pub fn load_f32_hamap_from_csv(path: &str) -> Result<Vec<HashMap<u16, f32>>, Box<dyn Error>> {
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+    let mut data = Vec::new();
+
+    for line in reader.lines() {
+        let line = line?;
+        let row = line.split(',').enumerate()
+            .filter_map(|(i, s)| {
+                let val = s.trim().parse::<f32>().unwrap();
+                if val == 0f32 {
+                    None
+                }
+                else {
+                    Some((i as u16, val))
+                }
+        }) .collect::<HashMap<u16, f32>>();
+
+        data.push(row);
+    }
+    Ok(data)
+}
+
+// Lyarva
+pub fn save_Vec_Maps(data: &Vec<HashMap<u16, f32>>, path: &str) -> std::io::Result<()> {
+    let encoded = bincode::serialize(data).unwrap();
+    let mut file = File::create(path)?;
+    file.write_all(&encoded)?;
+    Ok(())
+}
+
+pub fn load_Vec_Maps(path: &str) -> std::io::Result<Vec<HashMap<u16, f32>>> {
+    let data = std::fs::read(path)?;
+    let decoded: Vec<HashMap<u16, f32>> = bincode::deserialize(&data).unwrap();
+    Ok(decoded)
 }
