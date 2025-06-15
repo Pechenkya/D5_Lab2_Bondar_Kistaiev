@@ -190,18 +190,21 @@ fn main() {
     }
 
     /* Calculate LP table */ 
+    // let now = Instant::now();
+    // let lp_table = generate_lp_table();
+    // let elapsed = now.elapsed();
+    // println!("Elapsed: {:.2?}", elapsed); // Elapsed: 15376.29s
+    // save_Vec_Maps(&lp_table, "test_data/lp_table_saved.bin").unwrap();
+
     let now = Instant::now();
-    let lp_table = generate_lp_table();
+    let lp_table = load_Vec_Maps("test_data/lp_table_saved.bin").unwrap();
     let elapsed = now.elapsed();
-    println!("Elapsed: {:.2?}", elapsed); // Elapsed: 15376.29s
-    save_Vec_Maps(&lp_table, "test_data/lp_table_saved.bin").unwrap();
-
-    // let lp_table = load_Vec_Maps("test_data/lp_table_saved.bin").unwrap();
-    
-    println!("LP Table created!");
+    println!("Table loaded in: {:.2?}", elapsed);
+ 
+    println!("LP Table ready!");
 
     let now = Instant::now();
-    let corr_bound = 0.0004;    
+    let corr_bound = 0.0002;    
     let res = (0..=65535).into_par_iter().map(|alpha| {
         let res = branch_and_bound(alpha, 5, corr_bound, &lp_table)
             .into_iter().filter(|(beta, _)| *beta != 0).collect::<HashMap<u16, f32>>();
@@ -229,6 +232,7 @@ fn main() {
     // println!("Top 500 pairs: {:?}", top_500);
 
     let min_lp = top_500.last().unwrap().1;
+    println!("Min LP: {:}", min_lp);
 
     let N = ((1f32 / *min_lp as f32) * 16f32) as usize;
     println!("Sample size: {N}");
@@ -279,10 +283,6 @@ fn main() {
     let mut keys_selected: Vec<(&u16, &u16)> = keys_candidates.iter().collect::<Vec<(&u16, &u16)>>();
     keys_selected.sort_by(|a, b| b.1.partial_cmp(a.1).unwrap());
     // println!("Sorted kandidatis: {keys_selected:?}");
-
-    if let Some((key, stat)) = keys_selected.iter().find(|(&a, _)| {a == 0x1223}) { 
-        println!("{key:0x} is in kandidatis: {stat}")
-    }
 
     println!("Top 10 selected keys:");
     keys_selected.iter().take(10).for_each(|(key, kakaunt)| {
