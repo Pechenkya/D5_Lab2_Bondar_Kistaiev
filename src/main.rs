@@ -203,6 +203,11 @@ fn main() {
  
     println!("LP Table ready!");
 
+    /* .filter(|alpha| {(alpha & 0x000F != 0 && alpha & 0xFFF0 == 0) ||
+                                                          (alpha & 0x00F0 != 0 && alpha & 0xFF0F == 0) ||
+                                                          (alpha & 0x0F00 != 0 && alpha & 0xF0FF == 0) ||
+                                                          (alpha & 0xF000 != 0 && alpha & 0x0FFF == 0)}) */
+
     let now = Instant::now();
     let corr_bound = 0.0002;    
     let res = (0..=65535).into_par_iter().map(|alpha| {
@@ -234,32 +239,13 @@ fn main() {
     let min_lp = top_500.last().unwrap().1;
     println!("Min LP: {:}", min_lp);
 
-    let N = ((1f32 / *min_lp as f32) * 16f32) as usize;
+    let N = (4f32 / *min_lp) as usize;
     println!("Sample size: {N}");
 
-    let samples = sample_random_bytes_from_file("test_data/open.txt", "test_data/cypher.txt", N);
+    let samples = sample_random_bytes_from_file("test_data/open.txt", "test_data/cypher_own.txt", N);
 
     let keys = (0..=65535).map(|k| k as u16).collect::<Vec<_>>();
     let mut keys_candidates: HashMap<u16, u16> = HashMap::new();
-
-    // let Z_theta: f32 = -1.6448536269514729;
-    // for ((alpha, beta), lp) in top_500 {           
-    //     keys.iter().for_each(|key| {
-    //         let ka_kount = 65536 - 2 * (samples.iter().map(|(plain, suffer)| { 
-    //             (*alpha & spermutation(plain ^ key) ^ *beta & suffer) as i64
-    //         }).sum::<i64>());
-    //
-    //         let ka_kount_krit = (N as f32 * lp + Z_theta * f32::sqrt(N as f32 * lp * (1f32 - lp))) as i64;
-    //      
-    //         if ka_kount >= ka_kount_krit {
-    //             if let Some(count) = keys_candidates.get_mut(&key) {
-    //                 *count += 1;
-    //             } else {
-    //                 keys_candidates.insert(*key, 1);
-    //             }
-    //         }
-    //     });
-    // }
 
     top_500.iter().for_each(|((alpha, beta), _lp)|{           
         let mut selected = keys.iter().map(|key| {
@@ -271,7 +257,7 @@ fn main() {
         }).collect::<Vec<_>>();
         selected.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
         
-        selected.iter().take(60).for_each(|(&key, _)| {
+        selected.iter().take(100).for_each(|(&key, _)| {
             if let Some(count) = keys_candidates.get_mut(&key) {
                 *count += 1;
             } else {
