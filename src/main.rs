@@ -209,18 +209,19 @@ fn main() {
                                                           (alpha & 0xF000 != 0 && alpha & 0x0FFF == 0)}) */
 
     let now = Instant::now();
-    let corr_bound = 0.0002;    
+    let corr_bound = 0.0001;    
     let res = (0..=65535).into_par_iter().map(|alpha| {
         let res = branch_and_bound(alpha, 5, corr_bound, &lp_table)
             .into_iter().filter(|(beta, _)| *beta != 0).collect::<HashMap<u16, f32>>();
 
         (alpha, res)
-    }).collect::<Vec<_>>();
+    }).filter(|(_, res)| { !res.is_empty() }).collect::<Vec<_>>();
     let elapsed = now.elapsed();
     println!("B&B time: {:.2?}", elapsed);
 
-    let top15 = res.iter().take(15).collect::<Vec<_>>();
-    println!("15 elements in B&B result: {top15:?}");
+    // let top15 = res.iter().take(15).collect::<Vec<_>>();
+    // println!("15 elements in B&B result: {top15:?}");
+    
 
     let mut pairs_to_prob: HashMap<(u16, u16), f32> = HashMap::new();
     for (alpha, beta_probs) in res.iter() {
@@ -228,13 +229,17 @@ fn main() {
             pairs_to_prob.insert((*alpha, beta), prob);
         }
     }
-    // println!("Combined HashMap: {pairs_to_prob:?}");
+    println!("Pairs number: {:}", pairs_to_prob.len());
 
     // Select top 500 highest value pairs from pairs_to_prob
     let mut pairs_vec: Vec<(&(u16, u16), &f32)> = pairs_to_prob.iter().collect();
     pairs_vec.sort_by(|a, b| b.1.partial_cmp(a.1).unwrap());
     let top_500 = pairs_vec.into_iter().take(500).collect::<Vec<_>>();
     // println!("Top 500 pairs: {:?}", top_500);
+    println!("Top 10 pairs:");
+    for ((a, b), lp) in top_500[0..10].iter() {
+        println!("{a:016b}, {b:016b}: {lp}");
+    }
 
     let min_lp = top_500.last().unwrap().1;
     println!("Min LP: {:}", min_lp);
@@ -257,7 +262,7 @@ fn main() {
         }).collect::<Vec<_>>();
         selected.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
         
-        selected.iter().take(100).for_each(|(&key, _)| {
+        selected.iter().take(50).for_each(|(&key, _)| {
             if let Some(count) = keys_candidates.get_mut(&key) {
                 *count += 1;
             } else {
